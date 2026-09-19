@@ -1,0 +1,7 @@
+# Audio-to-MIDI transcription (basic-pitch + librosa for tempo/key).
+# basic-pitch depends on tensorflow<2.15.1, which has no build for
+# Python 3.11+ on most platforms — install this into a Python 3.10 or
+# 3.11 environment specifically. Not required for stem separation
+# (requirements-stems.txt), which runs fine on any modern Python.
+basic-pitch==0.3.3
+librosa==0.10.2

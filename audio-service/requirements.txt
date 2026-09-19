@@ -1,0 +1,17 @@
+# This service has two independent feature sets with incompatible Python
+# version requirements, so they're split into separate requirement files:
+#
+#   requirements-stems.txt   Stem separation (Demucs). Works on any modern
+#                             Python (3.10+, including 3.13).
+#   requirements-midi.txt    Audio-to-MIDI transcription (basic-pitch).
+#                             Needs Python 3.10 or 3.11 specifically —
+#                             basic-pitch's TensorFlow pin has no build for
+#                             newer Python versions.
+#
+# Install whichever you need:
+#   pip install -r requirements-stems.txt
+#   pip install -r requirements-midi.txt   # only on Python 3.10/3.11
+#
+# The service (main.py) detects at startup which of these are installed
+# and enables the corresponding endpoints — /separate-stems needs only
+# requirements-stems.txt, /audio-to-midi needs requirements-midi.txt too.

@@ -1,0 +1,69 @@
+# Dependencies
+node_modules/
+vendor/
+venv/
+__pycache__/
+*.pyc
+audio-service/ffmpeg-shared/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build outputs
+build/
+dist/
+*.log
+
+# Mobile specific
+*.apk
+*.ipa
+android/.gradle/
+ios/Pods/
+ios/build/
+
+# Laravel specific
+backend/storage/*.key
+backend/.phpunit.result.cache
+backend/bootstrap/cache/*
+!backend/bootstrap/cache/.gitkeep
+backend/storage/framework/cache/data/*
+backend/storage/framework/sessions/*
+backend/storage/framework/views/*
+backend/storage/logs/*
+!backend/storage/framework/cache/data/.gitignore
+!backend/storage/framework/sessions/.gitignore
+!backend/storage/framework/views/.gitignore
+!backend/storage/logs/.gitignore
+# User-uploaded/runtime audio (tracks, voice memos, stems, exports, avatars)
+# — real user data, not source code; large and shouldn't live in git.
+backend/storage/app/public/*
+!backend/storage/app/public/.gitignore
+backend/public/storage
+
+# Database
+*.sqlite
+*.sqlite3
+
+# Old pre-migration backups, not part of the current app
+_backup_before_sdk57/
+_backup_pre_sdk57/
+
+# Downloaded models/binaries fetched automatically at runtime
+audio-service/piper_voices/
+audio-service/__pycache__/
+
+# Expo
+mobile/.expo/

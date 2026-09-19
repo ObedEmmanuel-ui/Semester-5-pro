@@ -1,0 +1,36 @@
+{
+    "name": "mprowave/backend",
+    "type": "project",
+    "description": "MproWave Backend API - Laravel REST API for AI-assisted mobile DAW",
+    "keywords": ["laravel", "api", "audio", "ai", "daw"],
+    "license": "MIT",
+    "require": {
+        "php": "^8.2",
+        "laravel/framework": "11.56.1",
+        "laravel/sanctum": "^4.0",
+        "laravel/tinker": "^2.9",
+        "league/flysystem-aws-s3-v3": "^3.35"
+    },
+    "require-dev": {
+        "fakerphp/faker": "^1.23",
+        "laravel/pint": "^1.13",
+        "nunomaduro/collision": "^8.1"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "app/",
+            "Database\\Factories\\": "database/factories/",
+            "Database\\Seeders\\": "database/seeders/"
+        }
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "preferred-install": "dist",
+        "sort-packages": true,
+        "audit": {
+            "block-insecure": false
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

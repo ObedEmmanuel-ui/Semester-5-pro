@@ -1,0 +1,25 @@
+# Stem separation only (Demucs). Kept separate from requirements-midi.txt
+# because basic-pitch's TensorFlow pin doesn't support newer Python
+# versions (e.g. 3.13+) — that shouldn't block stem separation, which only
+# needs demucs/torch and has no such constraint.
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+python-multipart==0.0.9
+demucs==4.0.1
+# demucs shells out to real "ffmpeg" AND "ffprobe" binaries on PATH to
+# read and decode audio — static-ffmpeg fetches a portable static build
+# providing both (on first use) and adds them to PATH, so this works
+# without a system-wide FFmpeg install.
+static-ffmpeg
+# Lyrics-to-Song vocal rendering: Piper (VITS-based neural TTS, ONNX
+# runtime) — replaced Windows-SAPI5/pyttsx3, which sounded robotic no
+# matter how much pitch/timing post-processing was layered on top. Piper
+# sounds like a real human voice, runs fast on CPU, and is cross-platform.
+# The voice model itself (piper_voices/en_US-lessac-medium.*) is fetched
+# automatically on first use — see _ensure_piper_voice() in main.py.
+piper-tts
+# WORLD vocoder: formant-preserving pitch shift for the sung-vocal
+# rendering above — naive resample-based pitch shifting drags a word's
+# formants along with its pitch, which is what was making shifted words
+# unintelligible.
+pyworld

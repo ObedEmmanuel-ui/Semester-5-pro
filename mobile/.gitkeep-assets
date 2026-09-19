@@ -1,0 +1,2 @@
+The assets folder needs placeholder images for Expo to work properly.
+Since we can't create actual PNG files via text, we'll modify app.json to remove the asset requirements temporarily.
