@@ -22,6 +22,9 @@ import { DiscoverProducersScreen } from './screens/DiscoverProducersScreen';
 import { ProducerProfileScreen } from './screens/ProducerProfileScreen';
 import { FollowListScreen } from './screens/FollowListScreen';
 import { ProjectCommentsScreen } from './screens/ProjectCommentsScreen';
+import { SubscriptionScreen } from './screens/SubscriptionScreen';
+import { ChangePasswordScreen } from './screens/ChangePasswordScreen';
+import { PrivacyScreen } from './screens/PrivacyScreen';
 import { MainTabs } from './navigation/MainTabs';
 import { ThemeProvider } from './theme/ThemeContext';
 
@@ -44,6 +47,9 @@ export type RootStackParamList = {
   ProducerProfile: { userId: number };
   FollowList: { userId: number; mode: 'followers' | 'following'; name: string };
   ProjectComments: { projectId: number; projectName?: string };
+  Subscription: undefined;
+  ChangePassword: undefined;
+  Privacy: undefined;
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -82,6 +88,9 @@ const App = () => {
               <Stack.Screen name="ProducerProfile" component={ProducerProfileScreen} />
               <Stack.Screen name="FollowList" component={FollowListScreen} />
               <Stack.Screen name="ProjectComments" component={ProjectCommentsScreen} />
+              <Stack.Screen name="Subscription" component={SubscriptionScreen} />
+              <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
+              <Stack.Screen name="Privacy" component={PrivacyScreen} />
             </Stack.Navigator>
           </NavigationContainer>
         </SafeAreaProvider>

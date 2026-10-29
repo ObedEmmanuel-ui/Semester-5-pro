@@ -14,6 +14,7 @@ import { trackService, aiService } from '../services/api';
 import { useProjectStore } from '../store/projectStore';
 import { useRecorder } from '../hooks/useRecorder';
 import { ThemeColors, trackTypeColors } from '../theme/colors';
+import { BackButton } from '../components/BackButton';
 import { useTheme } from '../theme/ThemeContext';
 import { ThemedInput } from '../components/ThemedInput';
 import { RecordingMeter } from '../components/RecordingMeter';
@@ -279,9 +280,7 @@ export const AddTrackScreen = ({ navigation }: any) => {
           { paddingTop: insets.top + 16, paddingLeft: 20 + insets.left, paddingRight: 20 + insets.right },
         ]}
       >
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backButton}>{'<'}</Text>
-        </TouchableOpacity>
+        <BackButton onPress={() => navigation.goBack()} />
         <Text style={styles.title}>Add Track</Text>
         <View style={{ width: 60 }} />
       </View>
@@ -482,10 +481,6 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 40,
     paddingBottom: 10,
-  },
-  backButton: {
-    color: colors.primary,
-    fontSize: 16,
   },
   title: {
     color: colors.textPrimary,

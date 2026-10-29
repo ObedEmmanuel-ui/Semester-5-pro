@@ -41,6 +41,10 @@ Route::prefix('auth')->group(function () {
     Route::get('/user', [AuthController::class, 'user'])->middleware('auth:sanctum');
     Route::put('/profile', [AuthController::class, 'updateProfile'])->middleware('auth:sanctum');
     Route::post('/avatar', [AuthController::class, 'uploadAvatar'])->middleware('auth:sanctum');
+    Route::put('/password', [AuthController::class, 'changePassword'])->middleware('auth:sanctum');
+    Route::put('/privacy', [AuthController::class, 'updatePrivacy'])->middleware('auth:sanctum');
+    Route::get('/export-data', [AuthController::class, 'exportData'])->middleware('auth:sanctum');
+    Route::delete('/account', [AuthController::class, 'deleteAccount'])->middleware('auth:sanctum');
 });
 
 // Protected routes

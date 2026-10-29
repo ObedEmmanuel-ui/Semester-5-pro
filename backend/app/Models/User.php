@@ -21,6 +21,8 @@ class User extends Authenticatable
         'is_super_admin',
         'is_suspended',
         'suspended_at',
+        'is_discoverable',
+        'allow_project_comments',
     ];
 
     protected $hidden = [
@@ -35,6 +37,8 @@ class User extends Authenticatable
         'is_admin' => 'boolean',
         'is_super_admin' => 'boolean',
         'is_suspended' => 'boolean',
+        'is_discoverable' => 'boolean',
+        'allow_project_comments' => 'boolean',
     ];
 
     // Same pattern as Track's audio_playback_url: avatar_path stays the

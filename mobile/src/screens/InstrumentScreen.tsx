@@ -12,18 +12,24 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
 import { ThemeColors, trackTypeColors } from '../theme/colors';
+import { BackButton } from '../components/BackButton';
 import {
   Instrument,
   playInstrumentNote,
   playPattern,
   playSampleNote,
+  playSustainedNote,
+  stopSustainedNote,
   REFERENCE_MIDI,
   SAMPLE_REFERENCE_MIDI,
 } from '../services/instrumentSynth';
+import { playDrum } from '../services/drumSynth';
 import { midiToNoteName } from '../utils/notes';
 import { useSampleStore } from '../store/sampleStore';
 import { useProjectStore } from '../store/projectStore';
 import { trackService } from '../services/api';
+
+type HeldPlayer = ReturnType<typeof playSustainedNote>;
 
 interface RecordedNote {
   note: string;
@@ -147,6 +153,49 @@ export const InstrumentScreen = ({ navigation }: any) => {
   const { samples, removeSample } = useSampleStore();
   const { currentProject, addTrack } = useProjectStore();
 
+  // Real Yamaha-style keyboard controls: the panel's own tempo (starts from
+  // the open project's BPM but is independently adjustable, same reasoning
+  // as the Drums tab's own tempo control), a semitone transpose separate
+  // from the full-octave shift above, a master output level, a metronome
+  // click, sustain/hold (loops a note until the same key is tapped again —
+  // the practical equivalent of a sustain pedal for these one-shot
+  // samples), and a second "Dual" voice layered under every key press.
+  const [bpm, setBpm] = useState(currentProject?.bpm ?? 120);
+  useEffect(() => {
+    if (currentProject?.bpm) setBpm(currentProject.bpm);
+  }, [currentProject?.id]);
+  const [transpose, setTranspose] = useState(0);
+  const [masterVolume, setMasterVolume] = useState(0.9);
+  const [metronomeOn, setMetronomeOn] = useState(false);
+  const [sustainOn, setSustainOn] = useState(false);
+  const [dualVoiceOn, setDualVoiceOn] = useState(false);
+  const [dualInstrument, setDualInstrument] = useState<Instrument>('strings');
+  const heldPlayersRef = useRef<Record<string, HeldPlayer>>({});
+  const metronomeStepRef = useRef(0);
+
+  useEffect(() => {
+    if (!metronomeOn) {
+      metronomeStepRef.current = 0;
+      return;
+    }
+    const beatMs = 60000 / bpm;
+    const interval = setInterval(() => {
+      const step = metronomeStepRef.current % 4;
+      playDrum('hihat', step === 0 ? 1 : 0.55);
+      metronomeStepRef.current += 1;
+    }, beatMs);
+    return () => clearInterval(interval);
+  }, [metronomeOn, bpm]);
+
+  // Sustained notes must stop when the screen unmounts — otherwise a held
+  // chord would keep looping forever in the background.
+  useEffect(() => {
+    return () => {
+      Object.values(heldPlayersRef.current).forEach(stopSustainedNote);
+      heldPlayersRef.current = {};
+    };
+  }, []);
+
   // A recorded performance in progress: which key, at what beat offset
   // (relative to when Record was pressed). Kept in a ref while recording so
   // fast taps don't each trigger a re-render; turned into a new Take once
@@ -162,7 +211,6 @@ export const InstrumentScreen = ({ navigation }: any) => {
   const previewCancelRef = useRef<(() => void) | null>(null);
   const [isMixPlaying, setIsMixPlaying] = useState(false);
   const mixCancelRef = useRef<(() => void) | null>(null);
-  const bpm = currentProject?.bpm ?? 120;
 
   const selectedSample = samples.find((s) => s.id === selectedSampleId) || null;
   const accent = trackTypeColors.instrument.accent;
@@ -203,11 +251,39 @@ export const InstrumentScreen = ({ navigation }: any) => {
   };
 
   const playKey = (offset: number, id: string) => {
-    const midi = (selectedSample ? SAMPLE_REFERENCE_MIDI : REFERENCE_MIDI[instrument]) + octave * 12 + offset;
+    const midi =
+      (selectedSample ? SAMPLE_REFERENCE_MIDI : REFERENCE_MIDI[instrument]) + octave * 12 + transpose + offset;
+
+    if (sustainOn && !selectedSample) {
+      // Toggle-hold: tapping a key that's already ringing releases it,
+      // tapping a silent one starts it looping — the same "held until you
+      // let go" effect a real sustain pedal gives a one-shot sample.
+      const held = heldPlayersRef.current[id];
+      if (held) {
+        stopSustainedNote(held);
+        delete heldPlayersRef.current[id];
+        setPressedKeys((prev) => {
+          const next = { ...prev };
+          delete next[id];
+          return next;
+        });
+        return;
+      }
+      heldPlayersRef.current[id] = playSustainedNote(instrument, midi, masterVolume);
+      if (dualVoiceOn) {
+        heldPlayersRef.current[`${id}-dual`] = playSustainedNote(dualInstrument, midi, masterVolume * 0.75);
+      }
+      setPressedKeys((prev) => ({ ...prev, [id]: true }));
+      return;
+    }
+
     if (selectedSample) {
-      playSampleNote(selectedSample.uri, midi);
+      playSampleNote(selectedSample.uri, midi, masterVolume);
     } else {
-      playInstrumentNote(instrument, midi);
+      playInstrumentNote(instrument, midi, masterVolume);
+      if (dualVoiceOn) {
+        playInstrumentNote(dualInstrument, midi, masterVolume * 0.75);
+      }
     }
 
     setPressedKeys((prev) => ({ ...prev, [id]: true }));
@@ -373,12 +449,120 @@ export const InstrumentScreen = ({ navigation }: any) => {
       >
       <View style={[styles.header, { paddingTop: insets.top + 20 }]}>
         {navigation?.canGoBack?.() && (
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Text style={styles.backButtonText}>{'<'}</Text>
-          </TouchableOpacity>
+          <BackButton onPress={() => navigation.goBack()} style={styles.backButton} />
         )}
         <Text style={styles.title}>Instruments</Text>
         <Text style={styles.subtitle}>Play, layer takes, and mix them into a song</Text>
+      </View>
+
+      <View style={styles.controlPanel}>
+        <View style={styles.lcd}>
+          <Text style={styles.lcdText} numberOfLines={1}>
+            {(selectedSample ? selectedSample.name : instrument.toUpperCase())}
+            {dualVoiceOn ? ` + ${dualInstrument.toUpperCase()}` : ''}
+          </Text>
+          <View style={styles.lcdMetaRow}>
+            <Text style={styles.lcdMeta}>OCT {octave > 0 ? `+${octave}` : octave}</Text>
+            <Text style={styles.lcdMeta}>TR {transpose > 0 ? `+${transpose}` : transpose}</Text>
+            <Text style={styles.lcdMeta}>{bpm} BPM</Text>
+            <Text style={styles.lcdMeta}>VOL {Math.round(masterVolume * 100)}</Text>
+          </View>
+        </View>
+
+        <View style={styles.panelRow}>
+          <View style={styles.panelStepper}>
+            <Text style={styles.panelStepperLabel}>Tempo</Text>
+            <View style={styles.panelStepperControls}>
+              <TouchableOpacity style={styles.panelStepperBtn} onPress={() => setBpm((b) => Math.max(40, b - 5))}>
+                <Ionicons name="remove" size={13} color={colors.textPrimary} />
+              </TouchableOpacity>
+              <Text style={styles.panelStepperValue}>{bpm}</Text>
+              <TouchableOpacity style={styles.panelStepperBtn} onPress={() => setBpm((b) => Math.min(240, b + 5))}>
+                <Ionicons name="add" size={13} color={colors.textPrimary} />
+              </TouchableOpacity>
+            </View>
+          </View>
+          <View style={styles.panelStepper}>
+            <Text style={styles.panelStepperLabel}>Transpose</Text>
+            <View style={styles.panelStepperControls}>
+              <TouchableOpacity
+                style={styles.panelStepperBtn}
+                onPress={() => setTranspose((t) => Math.max(-12, t - 1))}
+              >
+                <Ionicons name="remove" size={13} color={colors.textPrimary} />
+              </TouchableOpacity>
+              <Text style={styles.panelStepperValue}>{transpose}</Text>
+              <TouchableOpacity
+                style={styles.panelStepperBtn}
+                onPress={() => setTranspose((t) => Math.min(12, t + 1))}
+              >
+                <Ionicons name="add" size={13} color={colors.textPrimary} />
+              </TouchableOpacity>
+            </View>
+          </View>
+          <View style={styles.panelStepper}>
+            <Text style={styles.panelStepperLabel}>Volume</Text>
+            <View style={styles.panelStepperControls}>
+              <TouchableOpacity
+                style={styles.panelStepperBtn}
+                onPress={() => setMasterVolume((v) => Math.max(0, +(v - 0.1).toFixed(1)))}
+              >
+                <Ionicons name="remove" size={13} color={colors.textPrimary} />
+              </TouchableOpacity>
+              <Text style={styles.panelStepperValue}>{Math.round(masterVolume * 100)}</Text>
+              <TouchableOpacity
+                style={styles.panelStepperBtn}
+                onPress={() => setMasterVolume((v) => Math.min(1, +(v + 0.1).toFixed(1)))}
+              >
+                <Ionicons name="add" size={13} color={colors.textPrimary} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.panelToggleRow}>
+          <TouchableOpacity
+            style={[styles.panelToggle, metronomeOn && styles.panelToggleActive]}
+            onPress={() => setMetronomeOn((v) => !v)}
+          >
+            <View style={[styles.panelToggleLight, metronomeOn && styles.panelToggleLightActive]} />
+            <Ionicons name="timer-outline" size={15} color={metronomeOn ? accent : colors.textSecondary} />
+            <Text style={[styles.panelToggleText, metronomeOn && { color: accent }]}>Metronome</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.panelToggle, sustainOn && styles.panelToggleActive]}
+            onPress={() => setSustainOn((v) => !v)}
+          >
+            <View style={[styles.panelToggleLight, sustainOn && styles.panelToggleLightActive]} />
+            <Ionicons name="infinite-outline" size={15} color={sustainOn ? accent : colors.textSecondary} />
+            <Text style={[styles.panelToggleText, sustainOn && { color: accent }]}>Sustain</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.panelToggle, dualVoiceOn && styles.panelToggleActive]}
+            onPress={() => setDualVoiceOn((v) => !v)}
+          >
+            <View style={[styles.panelToggleLight, dualVoiceOn && styles.panelToggleLightActive]} />
+            <Ionicons name="layers-outline" size={15} color={dualVoiceOn ? accent : colors.textSecondary} />
+            <Text style={[styles.panelToggleText, dualVoiceOn && { color: accent }]}>Dual</Text>
+          </TouchableOpacity>
+        </View>
+
+        {dualVoiceOn && (
+          <View style={styles.dualPickerRow}>
+            <Text style={styles.dualPickerLabel}>Layer:</Text>
+            {INSTRUMENTS.filter((i) => i.id !== instrument).map((inst) => (
+              <TouchableOpacity
+                key={inst.id}
+                style={[styles.dualChip, dualInstrument === inst.id && { borderColor: accent }]}
+                onPress={() => setDualInstrument(inst.id)}
+              >
+                <Text style={[styles.dualChipText, dualInstrument === inst.id && { color: accent }]}>
+                  {inst.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
       </View>
 
       <View style={styles.pickerRow}>
@@ -627,11 +811,7 @@ const getStyles = (colors: ThemeColors) =>
     },
     backButton: {
       marginBottom: 12,
-    },
-    backButtonText: {
-      color: colors.primary,
-      fontSize: 16,
-      fontWeight: '600',
+      alignSelf: 'flex-start',
     },
     title: {
       color: colors.textPrimary,
@@ -642,6 +822,141 @@ const getStyles = (colors: ThemeColors) =>
       color: colors.textSecondary,
       fontSize: 14,
       marginTop: 4,
+    },
+    controlPanel: {
+      backgroundColor: '#15130F',
+      borderRadius: 18,
+      marginHorizontal: 20,
+      marginBottom: 20,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: '#2A261C',
+    },
+    lcd: {
+      backgroundColor: '#0A1512',
+      borderRadius: 10,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+      marginBottom: 14,
+      borderWidth: 1,
+      borderColor: '#1E3B33',
+    },
+    lcdText: {
+      color: '#5FE0C7',
+      fontSize: 15,
+      fontWeight: '700',
+      letterSpacing: 0.5,
+      marginBottom: 4,
+    },
+    lcdMetaRow: {
+      flexDirection: 'row',
+      gap: 14,
+      flexWrap: 'wrap',
+    },
+    lcdMeta: {
+      color: '#3FA894',
+      fontSize: 11,
+      fontWeight: '600',
+    },
+    panelRow: {
+      flexDirection: 'row',
+      gap: 8,
+      marginBottom: 12,
+    },
+    panelStepper: {
+      flex: 1,
+      backgroundColor: '#231F17',
+      borderRadius: 12,
+      paddingVertical: 8,
+      paddingHorizontal: 8,
+      alignItems: 'center',
+    },
+    panelStepperLabel: {
+      color: '#8A8271',
+      fontSize: 9.5,
+      fontWeight: '700',
+      textTransform: 'uppercase',
+      letterSpacing: 0.4,
+      marginBottom: 6,
+    },
+    panelStepperControls: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    panelStepperBtn: {
+      width: 22,
+      height: 22,
+      borderRadius: 11,
+      backgroundColor: '#332C1F',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    panelStepperValue: {
+      color: '#F5EFE6',
+      fontSize: 13,
+      fontWeight: '700',
+      minWidth: 30,
+      textAlign: 'center',
+    },
+    panelToggleRow: {
+      flexDirection: 'row',
+      gap: 8,
+    },
+    panelToggle: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      backgroundColor: '#231F17',
+      borderRadius: 12,
+      paddingVertical: 10,
+    },
+    panelToggleActive: {
+      backgroundColor: 'rgba(217, 142, 74, 0.16)',
+    },
+    panelToggleLight: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: '#4A4232',
+      position: 'absolute',
+      top: 6,
+      right: 8,
+    },
+    panelToggleLightActive: {
+      backgroundColor: colors.danger,
+    },
+    panelToggleText: {
+      color: colors.textSecondary,
+      fontSize: 11,
+      fontWeight: '700',
+    },
+    dualPickerRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flexWrap: 'wrap',
+      gap: 8,
+      marginTop: 12,
+    },
+    dualPickerLabel: {
+      color: '#8A8271',
+      fontSize: 11,
+      fontWeight: '700',
+    },
+    dualChip: {
+      paddingVertical: 5,
+      paddingHorizontal: 12,
+      borderRadius: 14,
+      backgroundColor: '#231F17',
+      borderWidth: 1,
+      borderColor: 'transparent',
+    },
+    dualChipText: {
+      color: colors.textSecondary,
+      fontSize: 11,
+      fontWeight: '600',
     },
     pickerRow: {
       flexDirection: 'row',

@@ -18,6 +18,7 @@ import { projectMessageService } from '../services/api';
 import { ThemeColors } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
 import { ThemedInput } from '../components/ThemedInput';
+import { BackButton } from '../components/BackButton';
 import { onPlaybackFinished } from '../utils/audioPlayerEvents';
 
 interface ChatMessage {
@@ -168,9 +169,7 @@ export const ProjectChatScreen = ({ navigation, route }: any) => {
       keyboardVerticalOffset={insets.top}
     >
       <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backButton}>{'<'}</Text>
-        </TouchableOpacity>
+        <BackButton onPress={() => navigation.goBack()} />
         <Text style={styles.title} numberOfLines={1}>
           {project?.name || 'Project Chat'}
         </Text>
@@ -269,11 +268,6 @@ const getStyles = (colors: ThemeColors) =>
       justifyContent: 'space-between',
       paddingHorizontal: 20,
       paddingBottom: 16,
-    },
-    backButton: {
-      fontSize: 22,
-      fontWeight: '700',
-      color: colors.textPrimary,
     },
     title: {
       flex: 1,

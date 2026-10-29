@@ -31,6 +31,12 @@ class ProjectCommentController extends Controller
     {
         $this->authorizeView($request, $project);
 
+        abort_if(
+            $project->user_id !== $request->user()->id && !$project->user->allow_project_comments,
+            403,
+            'This producer has turned off comments on their projects.'
+        );
+
         $validated = $request->validate([
             'body' => 'required|string|max:2000',
         ]);
@@ -56,6 +62,29 @@ class ProjectCommentController extends Controller
                     'comment_preview' => Str::limit($comment->body, 80),
                 ],
             ]);
+        }
+
+        // Tell the commenter's own followers too, so following a producer
+        // means genuinely hearing about their activity — not just their
+        // own projects but also what they say on other people's work.
+        $followerIds = $request->user()->followers()->pluck('users.id')->all();
+        if ($followerIds) {
+            $notifications = array_map(fn ($followerId) => [
+                'user_id' => $followerId,
+                'type' => 'followed_user_comment',
+                'data' => json_encode([
+                    'project_id' => $project->id,
+                    'project_name' => $project->name,
+                    'comment_id' => $comment->id,
+                    'commenter_id' => $request->user()->id,
+                    'commenter_name' => $request->user()->name,
+                    'comment_preview' => Str::limit($comment->body, 80),
+                ]),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ], $followerIds);
+
+            Notification::insert($notifications);
         }
 
         return response()->json($comment->load('user:id,name,avatar_path'), 201);

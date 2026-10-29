@@ -1,5 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { Modal, View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Keyboard } from 'react-native';
+import {
+  Modal,
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  ActivityIndicator,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native';
 import { ThemeColors } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
 import { ThemedInput } from './ThemedInput';
@@ -43,7 +53,11 @@ export function CreateProjectModal({ visible, defaultName, onCancel, onCreate }:
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
-      <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onCancel}>
+      <KeyboardAvoidingView
+        style={styles.backdrop}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+      <TouchableOpacity style={styles.backdropTouch} activeOpacity={1} onPress={onCancel}>
         <TouchableOpacity activeOpacity={1} style={styles.card} onPress={() => {}}>
           <Text style={styles.title}>Name Your Project</Text>
           <Text style={styles.subtitle}>Give it a name that suits what you're working on</Text>
@@ -75,6 +89,7 @@ export function CreateProjectModal({ visible, defaultName, onCancel, onCreate }:
           </View>
         </TouchableOpacity>
       </TouchableOpacity>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -84,6 +99,9 @@ const getStyles = (colors: ThemeColors) =>
     backdrop: {
       flex: 1,
       backgroundColor: 'rgba(0,0,0,0.55)',
+    },
+    backdropTouch: {
+      flex: 1,
       alignItems: 'center',
       justifyContent: 'center',
       paddingHorizontal: 30,

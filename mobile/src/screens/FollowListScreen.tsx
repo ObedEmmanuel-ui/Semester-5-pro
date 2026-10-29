@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { producerService } from '../services/api';
 import { useTheme } from '../theme/ThemeContext';
 import { ThemeColors } from '../theme/colors';
+import { BackButton } from '../components/BackButton';
 
 interface ListedUser {
   id: number;
@@ -33,9 +34,7 @@ export const FollowListScreen = ({ navigation, route }: any) => {
   return (
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backButton}>{'<'}</Text>
-        </TouchableOpacity>
+        <BackButton onPress={() => navigation.goBack()} />
         <Text style={styles.title} numberOfLines={1}>
           {name === 'Your' ? 'Your' : `${name}'s`} {mode === 'followers' ? 'Followers' : 'Following'}
         </Text>
@@ -87,7 +86,6 @@ const getStyles = (colors: ThemeColors) =>
       paddingHorizontal: 20,
       paddingBottom: 16,
     },
-    backButton: { fontSize: 22, fontWeight: '700', color: colors.textPrimary },
     title: { flex: 1, textAlign: 'center', fontSize: 16, fontWeight: '700', color: colors.textPrimary, marginHorizontal: 12 },
     row: {
       flexDirection: 'row',

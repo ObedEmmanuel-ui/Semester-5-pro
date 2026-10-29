@@ -18,6 +18,7 @@ import { useProjectStore } from '../store/projectStore';
 import { trackService, projectService } from '../services/api';
 import { audioEngine } from '../services/audioEngine';
 import { trackTypeColors, ThemeColors } from '../theme/colors';
+import { BackButton } from '../components/BackButton';
 import { useTheme } from '../theme/ThemeContext';
 import { PianoRoll } from '../components/PianoRoll';
 import { Waveform } from '../components/Waveform';
@@ -366,9 +367,7 @@ export const EditorScreen = ({ navigation }: any) => {
           { paddingTop: insets.top + 16, paddingLeft: 20 + insets.left, paddingRight: 20 + insets.right },
         ]}
       >
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backButton}>{'<'}</Text>
-        </TouchableOpacity>
+        <BackButton onPress={() => navigation.goBack()} />
         <Text style={styles.projectTitle} numberOfLines={1}>{currentProject.name}</Text>
         <View style={styles.headerActions}>
           <TouchableOpacity onPress={() => navigation.navigate('ProjectChat', { projectId: currentProject.id })}>
@@ -628,10 +627,6 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
     padding: 20,
     paddingTop: 60,
     backgroundColor: colors.surface,
-  },
-  backButton: {
-    color: colors.primary,
-    fontSize: 16,
   },
   projectTitle: {
     flex: 1,

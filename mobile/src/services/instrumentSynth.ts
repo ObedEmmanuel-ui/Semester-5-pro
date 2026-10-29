@@ -60,6 +60,33 @@ export function playInstrumentNote(instrument: Instrument, midi?: number, volume
   }, estimatedMs);
 }
 
+/**
+ * Sustain/Hold mode: rather than a one-shot that decays on its own, this
+ * loops the sample indefinitely until `stopSustainedNote` is called — the
+ * same practical effect as holding a real keyboard's sustain pedal down on
+ * a note, since these short samples have no separate "note off" release
+ * stage to trigger otherwise. Returns the live player so the caller can
+ * stop it later (e.g. tapping the same key again to release it).
+ */
+export function playSustainedNote(instrument: Instrument, midi?: number, volume = 0.9) {
+  const player = createAudioPlayer(SAMPLES[instrument]);
+  player.shouldCorrectPitch = false;
+  player.volume = Math.max(0, Math.min(1, volume));
+  player.loop = true;
+  player.setPlaybackRate(rateForMidi(instrument, midi ?? REFERENCE_MIDI[instrument]));
+  player.play();
+  return player;
+}
+
+export function stopSustainedNote(player: ReturnType<typeof createAudioPlayer>) {
+  try {
+    player.pause();
+    player.remove();
+  } catch {
+    // already removed
+  }
+}
+
 // A custom recorded/imported sample has no fixed reference pitch, but we can
 // still play it back at different speeds to approximate other notes — same
 // technique as the bundled instruments, just centered on a plain C4 default

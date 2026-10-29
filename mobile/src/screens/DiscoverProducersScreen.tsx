@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { producerService } from '../services/api';
 import { useTheme } from '../theme/ThemeContext';
 import { ThemeColors } from '../theme/colors';
+import { BackButton } from '../components/BackButton';
 
 interface Producer {
   id: number;
@@ -28,7 +29,7 @@ interface ActivityComment {
   id: number;
   body: string;
   created_at: string;
-  user: { id: number; name: string };
+  user: { id: number; name: string; is_following: boolean | null };
   project: { id: number; name: string; user: { id: number; name: string } };
 }
 
@@ -109,12 +110,43 @@ export const DiscoverProducersScreen = ({ navigation }: any) => {
     }
   };
 
+  const toggleActivityFollow = async (activityUserId: number, wasFollowing: boolean) => {
+    setFollowingBusy(activityUserId);
+    setActivity((prev) =>
+      prev.map((item) =>
+        item.user.id === activityUserId ? { ...item, user: { ...item.user, is_following: !wasFollowing } } : item
+      )
+    );
+    // Keep the main producers list in sync too, in case the same person appears there.
+    setProducers((prev) =>
+      prev.map((p) =>
+        p.id === activityUserId
+          ? { ...p, is_following: !wasFollowing, followers_count: p.followers_count + (wasFollowing ? -1 : 1) }
+          : p
+      )
+    );
+    try {
+      if (wasFollowing) {
+        await producerService.unfollow(activityUserId);
+      } else {
+        await producerService.follow(activityUserId);
+      }
+    } catch (error) {
+      console.error('Failed to toggle follow:', error);
+      setActivity((prev) =>
+        prev.map((item) =>
+          item.user.id === activityUserId ? { ...item, user: { ...item.user, is_following: wasFollowing } } : item
+        )
+      );
+    } finally {
+      setFollowingBusy(null);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backButton}>{'<'}</Text>
-        </TouchableOpacity>
+        <BackButton onPress={() => navigation.goBack()} />
         <Text style={styles.title}>Discover Producers</Text>
         <View style={{ width: 20 }} />
       </View>
@@ -159,11 +191,40 @@ export const DiscoverProducersScreen = ({ navigation }: any) => {
                     }
                   >
                     <Ionicons name="chatbubble-ellipses-outline" size={16} color={colors.primaryLight} />
-                    <Text style={styles.activityText} numberOfLines={2}>
-                      <Text style={styles.activityBold}>{item.user.name}</Text> commented on{' '}
-                      <Text style={styles.activityBold}>{item.project.user.name}</Text>'s "{item.project.name}"
-                    </Text>
-                    <Text style={styles.activityTime}>{timeAgo(item.created_at)}</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.activityText} numberOfLines={2}>
+                        <Text style={styles.activityBold}>{item.user.name}</Text> commented on{' '}
+                        <Text style={styles.activityBold}>{item.project.user.name}</Text>'s "{item.project.name}"
+                      </Text>
+                      <Text style={styles.activityTime}>{timeAgo(item.created_at)}</Text>
+                    </View>
+                    {item.user.is_following === null ? (
+                      <View style={styles.activityYouBadge}>
+                        <Text style={styles.activityYouBadgeText}>You</Text>
+                      </View>
+                    ) : (
+                      <TouchableOpacity
+                        style={[styles.activityFollowButton, item.user.is_following && styles.followButtonActive]}
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          toggleActivityFollow(item.user.id, item.user.is_following as boolean);
+                        }}
+                        disabled={followingBusy === item.user.id}
+                      >
+                        {followingBusy === item.user.id ? (
+                          <ActivityIndicator
+                            size="small"
+                            color={item.user.is_following ? colors.textSecondary : colors.onAccent}
+                          />
+                        ) : (
+                          <Text
+                            style={[styles.followButtonText, item.user.is_following && styles.followButtonTextActive]}
+                          >
+                            {item.user.is_following ? 'Following' : 'Follow'}
+                          </Text>
+                        )}
+                      </TouchableOpacity>
+                    )}
                   </TouchableOpacity>
                 ))}
                 <Text style={styles.sectionLabel}>All Producers</Text>
@@ -224,7 +285,6 @@ const getStyles = (colors: ThemeColors) =>
       paddingHorizontal: 20,
       paddingBottom: 16,
     },
-    backButton: { fontSize: 22, fontWeight: '700', color: colors.textPrimary },
     title: { fontSize: 17, fontWeight: '700', color: colors.textPrimary },
     searchBar: {
       flexDirection: 'row',
@@ -301,6 +361,30 @@ const getStyles = (colors: ThemeColors) =>
     activityTime: {
       fontSize: 10,
       color: colors.textTertiary,
+      marginTop: 4,
+    },
+    activityFollowButton: {
+      paddingHorizontal: 12,
+      paddingVertical: 7,
+      borderRadius: 20,
+      backgroundColor: colors.primary,
+      minWidth: 78,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    activityYouBadge: {
+      paddingHorizontal: 12,
+      paddingVertical: 7,
+      borderRadius: 20,
+      backgroundColor: colors.surfaceAlt,
+      minWidth: 78,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    activityYouBadgeText: {
+      color: colors.textTertiary,
+      fontSize: 12,
+      fontWeight: '700',
     },
     sectionLabel: {
       fontSize: 13,

@@ -15,6 +15,7 @@ import { projectCommentService } from '../services/api';
 import { useTheme } from '../theme/ThemeContext';
 import { ThemeColors } from '../theme/colors';
 import { ThemedInput } from '../components/ThemedInput';
+import { BackButton } from '../components/BackButton';
 
 interface Comment {
   id: number;
@@ -72,9 +73,7 @@ export const ProjectCommentsScreen = ({ navigation, route }: any) => {
       keyboardVerticalOffset={insets.top}
     >
       <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backButton}>{'<'}</Text>
-        </TouchableOpacity>
+        <BackButton onPress={() => navigation.goBack()} />
         <Text style={styles.title} numberOfLines={1}>
           {projectName || 'Comments'}
         </Text>
@@ -143,7 +142,6 @@ const getStyles = (colors: ThemeColors) =>
       paddingHorizontal: 20,
       paddingBottom: 16,
     },
-    backButton: { fontSize: 22, fontWeight: '700', color: colors.textPrimary },
     title: { flex: 1, textAlign: 'center', fontSize: 16, fontWeight: '700', color: colors.textPrimary, marginHorizontal: 12 },
     commentRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
     avatar: {

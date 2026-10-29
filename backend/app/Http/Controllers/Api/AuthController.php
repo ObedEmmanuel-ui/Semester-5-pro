@@ -236,6 +236,104 @@ class AuthController extends Controller
         return response()->json($user);
     }
 
+    public function updatePrivacy(Request $request)
+    {
+        $validated = $request->validate([
+            'is_discoverable' => 'required|boolean',
+            'allow_project_comments' => 'required|boolean',
+        ]);
+
+        $user = $request->user();
+        $user->update($validated);
+
+        return response()->json($user);
+    }
+
+    /**
+     * A genuine data export — everything the app actually stores about this
+     * user, in one JSON payload: their profile, every project (with tracks
+     * and comments), voice memos, and personal notifications. Sent as a
+     * downloadable attachment rather than a plain JSON response.
+     */
+    public function exportData(Request $request)
+    {
+        $user = $request->user();
+
+        $data = [
+            'exported_at' => now()->toIso8601String(),
+            'account' => $user->only(['id', 'name', 'email', 'role', 'created_at']),
+            'projects' => $user->projects()->with(['tracks', 'comments'])->get(),
+            'voice_memos' => $user->voiceMemos()->get(),
+            'notifications' => $user->notifications()->get(),
+        ];
+
+        $filename = 'mprowave-data-export-' . now()->format('Y-m-d') . '.json';
+
+        return response()->json($data, 200, [
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+        ]);
+    }
+
+    /**
+     * Permanently deletes the account and everything tied to it. Requires
+     * re-entering the current password, same as any other irreversible
+     * account action, so a stolen/left-open session can't be used to wipe
+     * an account without knowing its password.
+     */
+    public function deleteAccount(Request $request)
+    {
+        $validated = $request->validate([
+            'password' => 'required|string',
+        ]);
+
+        $user = $request->user();
+
+        if (!Hash::check($validated['password'], $user->password)) {
+            throw ValidationException::withMessages([
+                'password' => ['Your password is incorrect.'],
+            ]);
+        }
+
+        if ($user->avatar_path) {
+            Storage::disk('public')->delete($user->avatar_path);
+        }
+
+        $user->tokens()->delete();
+        $user->delete();
+
+        return response()->json(['message' => 'Your account has been permanently deleted.']);
+    }
+
+    public function changePassword(Request $request)
+    {
+        $validated = $request->validate([
+            'current_password' => 'required|string',
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        $user = $request->user();
+
+        if (!Hash::check($validated['current_password'], $user->password)) {
+            throw ValidationException::withMessages([
+                'current_password' => ['Your current password is incorrect.'],
+            ]);
+        }
+
+        $user->update(['password' => Hash::make($validated['password'])]);
+
+        // Same as a forgotten-password reset: changing the password
+        // invalidates every session including this one, then reissues a
+        // fresh token so the user isn't logged out of the app they're in.
+        $user->tokens()->delete();
+        $newToken = $user->createToken('mobile-app')->plainTextToken;
+
+        return response()->json([
+            'message' => 'Password updated successfully.',
+            'token' => $newToken,
+            'token_type' => 'Bearer',
+        ]);
+    }
+
     public function uploadAvatar(Request $request)
     {
         $request->validate([

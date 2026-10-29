@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { producerService } from '../services/api';
 import { useTheme } from '../theme/ThemeContext';
 import { ThemeColors, coverGradients } from '../theme/colors';
+import { BackButton } from '../components/BackButton';
 
 interface PublicProject {
   id: number;
@@ -93,9 +94,7 @@ export const ProducerProfileScreen = ({ navigation, route }: any) => {
   return (
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backButton}>{'<'}</Text>
-        </TouchableOpacity>
+        <BackButton onPress={() => navigation.goBack()} />
         <Text style={styles.title} numberOfLines={1}>
           {producer.name}
         </Text>
@@ -206,7 +205,6 @@ const getStyles = (colors: ThemeColors) =>
       paddingHorizontal: 20,
       paddingBottom: 16,
     },
-    backButton: { fontSize: 22, fontWeight: '700', color: colors.textPrimary },
     title: { flex: 1, textAlign: 'center', fontSize: 16, fontWeight: '700', color: colors.textPrimary, marginHorizontal: 12 },
     identityRow: { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 20 },
     avatar: {

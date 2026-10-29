@@ -13,18 +13,26 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { authService, projectService, producerService } from '../services/api';
+import { hasUnreadNotifications } from './NotificationsScreen';
 import { useProjectStore } from '../store/projectStore';
 import { useTheme } from '../theme/ThemeContext';
 import { ThemeColors } from '../theme/colors';
 import { ThemedInput } from '../components/ThemedInput';
 
-const QUICK_LINKS: { label: string; icon: string; set: 'ion' | 'mci'; tab: string }[] = [
-  { label: 'Home', icon: 'home-outline', set: 'ion', tab: 'Home' },
-  { label: 'Projects', icon: 'folder-outline', set: 'ion', tab: 'Projects' },
-  { label: 'Library', icon: 'library-outline', set: 'ion', tab: 'Library' },
-  { label: 'AI Assistant', icon: 'sparkles-outline', set: 'ion', tab: 'AIAssistant' },
-  { label: 'Instrument', icon: 'piano', set: 'mci', tab: 'Instrument' },
-  { label: 'Discover Producers', icon: 'people-outline', set: 'ion', tab: 'DiscoverProducers' },
+const QUICK_LINKS: { label: string; subtitle: string; icon: string; set: 'ion' | 'mci'; tab: string; color: string }[] = [
+  { label: 'Home', subtitle: 'Back to dashboard', icon: 'home-outline', set: 'ion', tab: 'Home', color: '#9B7BFF' },
+  { label: 'Projects', subtitle: 'Manage your music projects', icon: 'folder-outline', set: 'ion', tab: 'Projects', color: '#4F8CFF' },
+  { label: 'Library', subtitle: 'Your beats, samples & files', icon: 'library-outline', set: 'ion', tab: 'Library', color: '#3ED9C7' },
+  { label: 'AI Assistant', subtitle: 'Get creative suggestions', icon: 'sparkles-outline', set: 'ion', tab: 'AIAssistant', color: '#F2A6E0' },
+  { label: 'Instrument', subtitle: 'Virtual instruments & tools', icon: 'piano', set: 'mci', tab: 'Instrument', color: '#60A5FA' },
+  { label: 'Discover Producers', subtitle: 'Connect and collaborate', icon: 'people-outline', set: 'ion', tab: 'DiscoverProducers', color: '#34D399' },
+];
+
+const STAT_META = [
+  { key: 'beats', label: 'Beats', icon: 'musical-notes' as const, color: '#9B7BFF' },
+  { key: 'projects', label: 'Projects', icon: 'folder' as const, color: '#4F8CFF' },
+  { key: 'followers', label: 'Followers', icon: 'people' as const, color: '#34D399' },
+  { key: 'following', label: 'Following', icon: 'person-add' as const, color: '#F2725A' },
 ];
 
 interface ProfileUser {
@@ -48,6 +56,7 @@ export const ProfileScreen = ({ navigation }: any) => {
   const [savingName, setSavingName] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [followCounts, setFollowCounts] = useState({ followers: 0, following: 0 });
+  const [hasUnread, setHasUnread] = useState(false);
   const { projects, setProjects } = useProjectStore();
 
   const totalBeats = useMemo(
@@ -85,6 +94,7 @@ export const ProfileScreen = ({ navigation }: any) => {
 
   useEffect(() => {
     loadUser().finally(() => setLoading(false));
+    hasUnreadNotifications().then(setHasUnread);
   }, []);
 
   const handleLogout = async () => {
@@ -164,7 +174,27 @@ export const ProfileScreen = ({ navigation }: any) => {
       ]}
       showsVerticalScrollIndicator={false}
     >
-      <Text style={styles.title}>Profile</Text>
+      <View style={styles.headerRow}>
+        <Text style={styles.title}>Profile</Text>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            style={styles.headerIconButton}
+            onPress={() => {
+              setHasUnread(false);
+              navigation.getParent()?.navigate('Notifications');
+            }}
+          >
+            <Ionicons name="notifications-outline" size={18} color={colors.textPrimary} />
+            {hasUnread && <View style={styles.headerUnreadDot} />}
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.headerIconButton}
+            onPress={() => navigation.getParent()?.navigate('Settings')}
+          >
+            <Ionicons name="options-outline" size={18} color={colors.textPrimary} />
+          </TouchableOpacity>
+        </View>
+      </View>
 
       {loading ? (
         <ActivityIndicator size="large" color={colors.primaryLight} />
@@ -234,32 +264,35 @@ export const ProfileScreen = ({ navigation }: any) => {
       )}
 
       <View style={styles.statsRow}>
-        <View style={styles.statCard}>
-          <Text style={styles.statValue}>{totalBeats}</Text>
-          <Text style={styles.statLabel}>Beats</Text>
-        </View>
-        <View style={styles.statCard}>
-          <Text style={styles.statValue}>{projects.length}</Text>
-          <Text style={styles.statLabel}>Projects</Text>
-        </View>
-        <TouchableOpacity
-          style={styles.statCard}
-          onPress={() =>
-            user?.id && navigation.navigate('FollowList', { userId: user.id, mode: 'followers', name: 'Your' })
-          }
-        >
-          <Text style={styles.statValue}>{followCounts.followers}</Text>
-          <Text style={styles.statLabel}>Followers</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.statCard}
-          onPress={() =>
-            user?.id && navigation.navigate('FollowList', { userId: user.id, mode: 'following', name: 'Your' })
-          }
-        >
-          <Text style={styles.statValue}>{followCounts.following}</Text>
-          <Text style={styles.statLabel}>Following</Text>
-        </TouchableOpacity>
+        {[
+          { ...STAT_META[0], value: totalBeats },
+          { ...STAT_META[1], value: projects.length },
+          { ...STAT_META[2], value: followCounts.followers, mode: 'followers' as const },
+          { ...STAT_META[3], value: followCounts.following, mode: 'following' as const },
+        ].map((stat) => {
+          const content = (
+            <>
+              <View style={[styles.statIconWrap, { backgroundColor: `${stat.color}22` }]}>
+                <Ionicons name={stat.icon} size={15} color={stat.color} />
+              </View>
+              <Text style={styles.statValue}>{stat.value}</Text>
+              <Text style={styles.statLabel}>{stat.label}</Text>
+            </>
+          );
+          return 'mode' in stat ? (
+            <TouchableOpacity
+              key={stat.key}
+              style={styles.statCard}
+              onPress={() => user?.id && navigation.navigate('FollowList', { userId: user.id, mode: stat.mode, name: 'Your' })}
+            >
+              {content}
+            </TouchableOpacity>
+          ) : (
+            <View key={stat.key} style={styles.statCard}>
+              {content}
+            </View>
+          );
+        })}
       </View>
 
       <Text style={styles.sectionLabel}>Quick Links</Text>
@@ -270,12 +303,17 @@ export const ProfileScreen = ({ navigation }: any) => {
             style={[styles.menuRow, index < QUICK_LINKS.length - 1 && styles.menuRowBorder]}
             onPress={() => navigation.navigate(link.tab)}
           >
-            {link.set === 'mci' ? (
-              <MaterialCommunityIcons name={link.icon as any} size={20} color={colors.textSecondary} />
-            ) : (
-              <Ionicons name={link.icon as any} size={20} color={colors.textSecondary} />
-            )}
-            <Text style={styles.menuLabel}>{link.label}</Text>
+            <View style={[styles.menuIconWrap, { backgroundColor: `${link.color}22` }]}>
+              {link.set === 'mci' ? (
+                <MaterialCommunityIcons name={link.icon as any} size={18} color={link.color} />
+              ) : (
+                <Ionicons name={link.icon as any} size={18} color={link.color} />
+              )}
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.menuLabel}>{link.label}</Text>
+              <Text style={styles.menuSubtitle}>{link.subtitle}</Text>
+            </View>
             <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
           </TouchableOpacity>
         ))}
@@ -290,9 +328,7 @@ export const ProfileScreen = ({ navigation }: any) => {
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.menuRow, styles.menuRowBorder]}
-          onPress={() =>
-            Alert.alert('Free Plan', 'You are on the Free Plan. Paid plans are not available yet.')
-          }
+          onPress={() => navigation.navigate('Subscription')}
         >
           <Ionicons name="card-outline" size={20} color={colors.textSecondary} />
           <Text style={styles.menuLabel}>Subscription</Text>
@@ -353,7 +389,33 @@ const getStyles = (colors: ThemeColors) =>
       fontSize: 28,
       fontWeight: 'bold',
       color: colors.textPrimary,
+    },
+    headerRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
       marginBottom: 20,
+    },
+    headerActions: {
+      flexDirection: 'row',
+      gap: 10,
+    },
+    headerIconButton: {
+      width: 38,
+      height: 38,
+      borderRadius: 19,
+      backgroundColor: colors.surface,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    headerUnreadDot: {
+      position: 'absolute',
+      top: 8,
+      right: 8,
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: '#FF3B30',
     },
     userCard: {
       flexDirection: 'row',
@@ -460,6 +522,14 @@ const getStyles = (colors: ThemeColors) =>
       alignItems: 'center',
       gap: 4,
     },
+    statIconWrap: {
+      width: 28,
+      height: 28,
+      borderRadius: 9,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 2,
+    },
     statValue: {
       fontSize: 18,
       fontWeight: '700',
@@ -499,11 +569,22 @@ const getStyles = (colors: ThemeColors) =>
       borderBottomWidth: 1,
       borderBottomColor: colors.surfaceAlt,
     },
+    menuIconWrap: {
+      width: 36,
+      height: 36,
+      borderRadius: 11,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
     menuLabel: {
-      flex: 1,
       color: colors.textPrimary,
       fontSize: 15,
       fontWeight: '600',
+    },
+    menuSubtitle: {
+      color: colors.textTertiary,
+      fontSize: 11.5,
+      marginTop: 2,
     },
     logoutButton: {
       backgroundColor: colors.primary,

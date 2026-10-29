@@ -162,7 +162,9 @@ export const NotificationsScreen = ({ navigation }: any) => {
                 </View>
                 <View style={styles.cardBody}>
                   <Text style={styles.cardTitle}>
-                    {item.notification.data.commenter_name} commented on your project
+                    {item.notification.type === 'followed_user_comment'
+                      ? `${item.notification.data.commenter_name}, who you follow, posted a comment`
+                      : `${item.notification.data.commenter_name} commented on your project`}
                   </Text>
                   <Text style={styles.cardText}>
                     "{item.notification.data.comment_preview}" — {item.notification.data.project_name}

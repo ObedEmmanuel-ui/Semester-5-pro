@@ -125,6 +125,34 @@ export const authService = {
     });
     return response.data;
   },
+
+  changePassword: async (params: {
+    current_password: string;
+    password: string;
+    password_confirmation: string;
+  }) => {
+    const response = await api.put('/auth/password', params);
+    if (response.data.token) {
+      await AsyncStorage.setItem('auth_token', response.data.token);
+    }
+    return response.data;
+  },
+
+  updatePrivacy: async (params: { is_discoverable: boolean; allow_project_comments: boolean }) => {
+    const response = await api.put('/auth/privacy', params);
+    return response.data;
+  },
+
+  exportData: async () => {
+    const response = await api.get('/auth/export-data');
+    return response.data;
+  },
+
+  deleteAccount: async (password: string) => {
+    const response = await api.delete('/auth/account', { data: { password } });
+    await AsyncStorage.removeItem('auth_token');
+    return response.data;
+  },
 };
 
 export const projectService = {

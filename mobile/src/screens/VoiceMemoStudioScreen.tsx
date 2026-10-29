@@ -8,6 +8,7 @@ import { voiceMemoService } from '../services/api';
 import { ThemeColors } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
 import { onPlaybackFinished } from '../utils/audioPlayerEvents';
+import { BackButton } from '../components/BackButton';
 
 interface VoiceMemo {
   id: number;
@@ -133,9 +134,7 @@ export const VoiceMemoStudioScreen = ({ navigation }: any) => {
   return (
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backButton}>{'<'}</Text>
-        </TouchableOpacity>
+        <BackButton onPress={() => navigation.goBack()} />
         <Text style={styles.title}>Voice Memo Studio</Text>
         <View style={{ width: 20 }} />
       </View>
@@ -226,11 +225,6 @@ const getStyles = (colors: ThemeColors) =>
       justifyContent: 'space-between',
       paddingHorizontal: 20,
       paddingBottom: 16,
-    },
-    backButton: {
-      fontSize: 22,
-      fontWeight: '700',
-      color: colors.textPrimary,
     },
     title: {
       fontSize: 17,

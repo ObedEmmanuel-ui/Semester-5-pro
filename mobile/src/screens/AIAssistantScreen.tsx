@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import { createAudioPlayer } from 'expo-audio';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { aiService, authService, projectService, trackService, stemService } from '../services/api';
 import { useProjectStore } from '../store/projectStore';
@@ -27,6 +27,7 @@ import { ThemedInput } from '../components/ThemedInput';
 import { RecordingMeter } from '../components/RecordingMeter';
 import { PianoRoll } from '../components/PianoRoll';
 import { WaveformMark } from '../components/WaveformMark';
+import { BackButton } from '../components/BackButton';
 import { DrumSequencer } from '../components/DrumSequencer';
 import { DrumPattern, emptyDrumPattern, playDrumPattern, resizeDrumPattern } from '../services/drumSynth';
 import { Instrument, playPattern } from '../services/instrumentSynth';
@@ -34,6 +35,39 @@ import { isLikelyAudioFile } from '../utils/audioFiles';
 
 type Section = 'lyrics' | 'midi' | 'drums' | 'harmony' | 'stems';
 type ScreenView = 'home' | Section;
+
+const MIDI_INSPIRATION: { key: string; label: string; icon: React.ComponentProps<typeof Ionicons>['name']; color: string }[] = [
+  { key: 'lofi', label: 'Chill lo-fi melody', icon: 'moon', color: '#9B7BFF' },
+  { key: 'trap', label: 'Trap banger', icon: 'flash', color: '#34D399' },
+  { key: 'piano-emo', label: 'Emotional piano', icon: 'musical-notes', color: '#F2A6E0' },
+  { key: 'afro', label: 'Afrobeats vibe', icon: 'globe-outline', color: '#FBBF24' },
+];
+
+const MOOD_OPTIONS: { key: string; label: string; icon: React.ComponentProps<typeof Ionicons>['name']; color: string }[] = [
+  { key: 'happy', label: 'Happy', icon: 'sunny', color: '#FBBF24' },
+  { key: 'sad', label: 'Sad', icon: 'rainy', color: '#60A5FA' },
+  { key: 'energetic', label: 'Energetic', icon: 'flash', color: '#FB923C' },
+  { key: 'chill', label: 'Chill', icon: 'snow', color: '#3ED9C7' },
+  { key: 'dark', label: 'Dark', icon: 'moon', color: '#9B7BFF' },
+  { key: 'romantic', label: 'Romantic', icon: 'heart', color: '#F2725A' },
+];
+
+const GENRE_OPTIONS: { key: string; label: string; icon: React.ComponentProps<typeof Ionicons>['name']; color: string }[] = [
+  { key: 'pop', label: 'Pop', icon: 'musical-notes', color: '#9B7BFF' },
+  { key: 'hiphop', label: 'Hip Hop', icon: 'mic', color: '#60A5FA' },
+  { key: 'rnb', label: 'R&B', icon: 'heart', color: '#F2A6E0' },
+  { key: 'rock', label: 'Rock', icon: 'flash', color: '#F25757' },
+  { key: 'afrobeats', label: 'Afrobeats', icon: 'globe-outline', color: '#34D399' },
+  { key: 'edm', label: 'EDM', icon: 'pulse', color: '#3ED9C7' },
+];
+
+const SECTION_LABELS: Record<Section, string> = {
+  lyrics: 'Lyrics',
+  midi: 'Midi',
+  drums: 'Drums',
+  harmony: 'Harmony',
+  stems: 'Stems',
+};
 
 // "Best Suggestions" has no distinct backend endpoint of its own — it opens
 // the harmony tab, which already gives AI suggestions from a recorded clip,
@@ -51,6 +85,10 @@ const STEM_LABELS: Record<string, string> = {
   bass: 'Bass',
   other: 'Other',
 };
+
+// Angles for the decorative "sunburst" ring around the Harmony tab's status
+// icon — purely visual, evenly spaced short bars radiating outward.
+const HARMONY_BURST_ANGLES = Array.from({ length: 16 }, (_, i) => i * (360 / 16));
 
 const DRUM_STYLES = ['rock', 'funk', 'trap', 'hiphop', 'afrobeats'];
 const DRUM_STYLE_ICONS: Record<string, React.ComponentProps<typeof Ionicons>['name']> = {
@@ -815,15 +853,11 @@ export const AIAssistantScreen = ({ navigation, route }: any) => {
         ]}
       >
         {view !== 'home' ? (
-          <TouchableOpacity onPress={() => setView('home')}>
-            <Text style={styles.backButton}>{'<'}</Text>
-          </TouchableOpacity>
+          <BackButton onPress={() => setView('home')} />
         ) : navigation.canGoBack() ? (
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Text style={styles.backButton}>{'<'}</Text>
-          </TouchableOpacity>
+          <BackButton onPress={() => navigation.goBack()} />
         ) : (
-          <View style={{ width: 24 }} />
+          <View style={{ width: 34 }} />
         )}
         <View style={styles.brandRow}>
           <WaveformMark size={22} />
@@ -840,14 +874,20 @@ export const AIAssistantScreen = ({ navigation, route }: any) => {
         end={{ x: 1, y: 1 }}
         style={[styles.hero, { marginLeft: 20 + insets.left, marginRight: 20 + insets.right }]}
       >
-        <View style={styles.heroTextCol}>
-          <Text style={styles.heroTitle}>AI Assistant</Text>
-          <Text style={styles.heroSubtitle}>Create beats, lyrics &amp; full songs with the power of AI</Text>
-        </View>
-        <View style={styles.heroGraphic}>
-          <Ionicons name="headset" size={26} color="rgba(255,255,255,0.95)" />
-          <Ionicons name="musical-note" size={13} color="rgba(255,255,255,0.6)" style={styles.heroGraphicNoteA} />
-          <Ionicons name="musical-notes" size={11} color="rgba(255,255,255,0.5)" style={styles.heroGraphicNoteB} />
+        <View style={styles.heroTopRow}>
+          <View style={styles.heroTextCol}>
+            <View style={styles.heroTitleRow}>
+              <Ionicons name="sparkles" size={15} color="#FFFFFF" />
+              <Text style={styles.heroTitle}>AI Assistant</Text>
+            </View>
+            <Text style={styles.heroSubtitle}>Create beats, lyrics &amp; full songs with the power of AI</Text>
+          </View>
+          <View style={styles.heroGraphic}>
+            <Ionicons name="headset" size={26} color="rgba(255,255,255,0.95)" />
+            <View style={styles.heroGraphicBadge}>
+              <Ionicons name="play" size={9} color={colors.primary} />
+            </View>
+          </View>
         </View>
       </LinearGradient>
 
@@ -891,6 +931,19 @@ export const AIAssistantScreen = ({ navigation, route }: any) => {
       >
         {(['lyrics', 'midi', 'drums', 'harmony', 'stems'] as Section[]).map((s) => {
           const active = section === s;
+          const iconColor = active ? '#FFFFFF' : colors.textSecondary;
+          const icon =
+            s === 'lyrics' ? (
+              <Ionicons name="musical-note" size={14} color={iconColor} />
+            ) : s === 'midi' ? (
+              <MaterialCommunityIcons name="piano" size={15} color={iconColor} />
+            ) : s === 'drums' ? (
+              <Ionicons name="disc-outline" size={14} color={iconColor} />
+            ) : s === 'harmony' ? (
+              <Ionicons name="pulse" size={14} color={iconColor} />
+            ) : (
+              <Ionicons name="layers-outline" size={14} color={iconColor} />
+            );
           return (
             <TouchableOpacity key={s} onPress={() => setView(s)}>
               {active ? (
@@ -900,11 +953,13 @@ export const AIAssistantScreen = ({ navigation, route }: any) => {
                   end={{ x: 1, y: 0 }}
                   style={styles.tabPill}
                 >
-                  <Text style={styles.tabPillTextActive}>{s}</Text>
+                  {icon}
+                  <Text style={styles.tabPillTextActive}>{SECTION_LABELS[s]}</Text>
                 </LinearGradient>
               ) : (
                 <View style={styles.tabPill}>
-                  <Text style={styles.tabPillText}>{s}</Text>
+                  {icon}
+                  <Text style={styles.tabPillText}>{SECTION_LABELS[s]}</Text>
                 </View>
               )}
             </TouchableOpacity>
@@ -927,38 +982,81 @@ export const AIAssistantScreen = ({ navigation, route }: any) => {
 
         {section === 'lyrics' && (
           <View>
-            <View style={styles.lyricsGenBox}>
-              <Text style={styles.label}>Don&apos;t have lyrics? Generate some</Text>
-              <ThemedInput
-                style={styles.inputSpacing}
-                placeholder="Topic, e.g. 'chasing a dream in the city'"
-                value={lyricsTopic}
-                onChangeText={setLyricsTopic}
-              />
-              <View style={styles.lyricsGenRow}>
-                <ThemedInput
-                  style={[styles.inputSpacing, styles.lyricsGenHalf]}
-                  placeholder="Mood (optional)"
-                  value={lyricsMood}
-                  onChangeText={setLyricsMood}
-                />
-                <ThemedInput
-                  style={[styles.inputSpacing, styles.lyricsGenHalf]}
-                  placeholder="Genre (optional)"
-                  value={lyricsGenre}
-                  onChangeText={setLyricsGenre}
-                />
+            <View>
+              <Text style={styles.formTitle}>Topic or idea</Text>
+              <Text style={styles.formSubtitle}>What do you want to write about?</Text>
+              <View style={styles.charCountWrap}>
+                <View style={styles.topicInputRow}>
+                  <Ionicons name="pencil-outline" size={15} color={colors.textTertiary} style={{ marginTop: 14 }} />
+                  <ThemedInput
+                    style={[styles.inputSpacing, styles.lyricsTopicInput, { flex: 1 }]}
+                    placeholder="e.g. chasing a dream in the city"
+                    value={lyricsTopic}
+                    onChangeText={(t) => setLyricsTopic(t.slice(0, 200))}
+                    multiline
+                  />
+                </View>
+                <Text style={styles.charCount}>{lyricsTopic.length}/200</Text>
               </View>
+
+              <Text style={styles.formTitle}>Mood (optional)</Text>
+              <View style={styles.optionGrid}>
+                {MOOD_OPTIONS.map((opt) => {
+                  const active = lyricsMood === opt.label;
+                  return (
+                    <TouchableOpacity
+                      key={opt.key}
+                      style={[styles.optionChip, active && { borderColor: opt.color, backgroundColor: `${opt.color}22` }]}
+                      onPress={() => setLyricsMood(active ? '' : opt.label)}
+                    >
+                      <Ionicons name={opt.icon} size={14} color={opt.color} />
+                      <Text style={[styles.optionChipText, active && { color: colors.textPrimary }]}>{opt.label}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              <Text style={styles.formTitle}>Genre (optional)</Text>
+              <View style={styles.optionGrid}>
+                {GENRE_OPTIONS.map((opt) => {
+                  const active = lyricsGenre === opt.label;
+                  return (
+                    <TouchableOpacity
+                      key={opt.key}
+                      style={[
+                        styles.optionChip,
+                        styles.optionChipWide,
+                        active && { borderColor: opt.color, backgroundColor: `${opt.color}22` },
+                      ]}
+                      onPress={() => setLyricsGenre(active ? '' : opt.label)}
+                    >
+                      <Ionicons name={opt.icon} size={14} color={opt.color} />
+                      <Text style={[styles.optionChipText, active && { color: colors.textPrimary }]}>{opt.label}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
               <TouchableOpacity
-                style={styles.actionButton}
                 onPress={handleGenerateLyrics}
                 disabled={lyricsGenLoading || !lyricsTopic.trim()}
+                style={[styles.inputSpacing, (lyricsGenLoading || !lyricsTopic.trim()) && { opacity: 0.6 }]}
               >
-                {lyricsGenLoading ? (
-                  <ActivityIndicator color={colors.onAccent} />
-                ) : (
-                  <Text style={styles.actionButtonText}>✨ Generate Lyrics</Text>
-                )}
+                <LinearGradient
+                  colors={primaryGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.lyricsGenerateButton}
+                >
+                  {lyricsGenLoading ? (
+                    <ActivityIndicator color={colors.onAccent} />
+                  ) : (
+                    <>
+                      <Text style={styles.actionButtonText}>Generate Lyrics</Text>
+                      <Ionicons name="arrow-forward" size={16} color="#FFFFFF" style={{ marginLeft: 8 }} />
+                    </>
+                  )}
+                </LinearGradient>
               </TouchableOpacity>
               {lyricsSource && (
                 <Text style={styles.sourceCaption}>
@@ -1131,24 +1229,60 @@ export const AIAssistantScreen = ({ navigation, route }: any) => {
               </View>
             )}
 
-            <Text style={styles.label}>Describe the melody you want</Text>
-            <ThemedInput
-              style={styles.inputSpacing}
-              placeholder="e.g. A happy, upbeat melody"
-              value={prompt}
-              onChangeText={setPrompt}
-            />
+            <Text style={styles.formTitle}>Describe the melody you want</Text>
+            <Text style={styles.formSubtitle}>
+              Tell the AI what kind of melody you have in mind. Be as specific as you like.
+            </Text>
+            <View style={styles.charCountWrap}>
+              <ThemedInput
+                style={[styles.inputSpacing, styles.midiPromptInput]}
+                placeholder="e.g. A happy, upbeat melody"
+                value={prompt}
+                onChangeText={(t) => setPrompt(t.slice(0, 200))}
+                multiline
+              />
+              <Text style={styles.charCount}>{prompt.length}/200</Text>
+            </View>
             <TouchableOpacity
-              style={styles.actionButton}
               onPress={handleGenerateMidi}
               disabled={midiLoading || !prompt}
+              style={[styles.inputSpacing, (midiLoading || !prompt) && { opacity: 0.6 }]}
             >
-              {midiLoading ? (
-                <ActivityIndicator color={colors.onAccent} />
-              ) : (
-                <Text style={styles.actionButtonText}>Generate MIDI</Text>
-              )}
+              <LinearGradient
+                colors={primaryGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.lyricsGenerateButton}
+              >
+                {midiLoading ? (
+                  <ActivityIndicator color={colors.onAccent} />
+                ) : (
+                  <>
+                    <MaterialCommunityIcons name="piano" size={16} color="#FFFFFF" style={{ marginRight: 8 }} />
+                    <Text style={styles.actionButtonText}>Generate MIDI</Text>
+                    <Ionicons name="arrow-forward" size={16} color="#FFFFFF" style={{ marginLeft: 8 }} />
+                  </>
+                )}
+              </LinearGradient>
             </TouchableOpacity>
+
+            <View style={styles.inspirationBox}>
+              <View style={styles.inspirationHeader}>
+                <Ionicons name="bulb-outline" size={15} color={colors.primaryLight} />
+                <Text style={styles.inspirationTitle}>Need inspiration?</Text>
+              </View>
+              <Text style={styles.inspirationSubtitle}>Try these popular ideas or create your own</Text>
+              <View style={styles.inspirationGrid}>
+                {MIDI_INSPIRATION.map((idea) => (
+                  <TouchableOpacity key={idea.key} style={styles.inspirationChip} onPress={() => setPrompt(idea.label)}>
+                    <Ionicons name={idea.icon} size={13} color={idea.color} />
+                    <Text style={styles.inspirationChipText} numberOfLines={1}>
+                      {idea.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
 
             {midiResult && (
               <View style={styles.resultBox}>
@@ -1353,17 +1487,58 @@ export const AIAssistantScreen = ({ navigation, route }: any) => {
 
         {section === 'harmony' && (
           <View>
-            <Text style={styles.label}>
+            <Text style={styles.harmonyCaption}>
               Record a short clip so the assistant can listen and suggest ideas
             </Text>
-            <TouchableOpacity
-              style={[styles.recordButton, isRecording && styles.recordButtonActive]}
-              onPress={toggleRecording}
-            >
-              <Text style={styles.recordButtonText}>
-                {isRecording ? '■ Stop Recording' : '● Record Clip'}
+
+            <View style={styles.harmonyHero}>
+              <View style={styles.harmonyStatusCircle}>
+                {HARMONY_BURST_ANGLES.map((angle) => (
+                  <View
+                    key={angle}
+                    style={[
+                      styles.harmonyBurstBar,
+                      {
+                        transform: [
+                          { rotate: `${angle}deg` },
+                          { translateY: -38 },
+                        ],
+                      },
+                    ]}
+                  />
+                ))}
+                <Ionicons
+                  name={recordedUri ? 'checkmark' : isRecording ? 'mic' : 'musical-notes-outline'}
+                  size={30}
+                  color={colors.primaryLight}
+                />
+              </View>
+
+              <Text style={styles.harmonyStatusTitle}>
+                {isRecording ? 'Listening…' : recordedUri ? 'Clip ready' : 'No clip recorded yet'}
               </Text>
-            </TouchableOpacity>
+              <Text style={styles.harmonyStatusSubtitle}>
+                {isRecording
+                  ? 'Tap Stop when you’re done playing.'
+                  : recordedUri
+                  ? 'Suggest Harmony or Analyze Audio below, or record a new clip.'
+                  : 'Tap the button below to record a short clip and get AI suggestions.'}
+              </Text>
+
+              <TouchableOpacity onPress={toggleRecording} activeOpacity={0.85}>
+                <LinearGradient
+                  colors={isRecording ? [colors.danger, colors.danger] : primaryGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.harmonyRecordPill}
+                >
+                  <Ionicons name={isRecording ? 'stop' : 'mic'} size={16} color="#FFFFFF" />
+                  <Text style={styles.harmonyRecordPillText}>
+                    {isRecording ? 'Stop Recording' : 'Record Clip'}
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
 
             {isRecording && <RecordingMeter durationMillis={durationMillis} meterLevel={meterLevel} />}
 
@@ -1572,12 +1747,6 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: 'center',
     paddingBottom: 14,
   },
-  backButton: {
-    color: colors.textPrimary,
-    fontSize: 20,
-    fontWeight: '700',
-    width: 24,
-  },
   brandRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1608,15 +1777,24 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
     padding: 18,
     marginBottom: 16,
   },
+  heroTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   heroTextCol: {
     flex: 1,
     paddingRight: 12,
   },
+  heroTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 6,
+  },
   heroTitle: {
     color: '#FFFFFF',
-    fontSize: 19,
-    fontWeight: '700',
-    marginBottom: 6,
+    fontSize: 18,
+    fontWeight: '800',
   },
   heroSubtitle: {
     color: 'rgba(255,255,255,0.85)',
@@ -1631,23 +1809,27 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  heroGraphicNoteA: {
+  heroGraphicBadge: {
     position: 'absolute',
-    top: -4,
-    right: -2,
-  },
-  heroGraphicNoteB: {
-    position: 'absolute',
-    bottom: -2,
-    left: -2,
+    bottom: -4,
+    right: -4,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   tabs: {
     flexGrow: 0,
     marginBottom: 16,
   },
   tabPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     paddingVertical: 9,
-    paddingHorizontal: 18,
+    paddingHorizontal: 16,
     borderRadius: 20,
     backgroundColor: colors.surface,
   },
@@ -1697,6 +1879,64 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
   recordButtonText: {
     color: colors.textPrimary,
     fontWeight: '600',
+  },
+  harmonyCaption: {
+    fontSize: 13.5,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 19,
+    paddingHorizontal: 10,
+    marginBottom: 8,
+  },
+  harmonyHero: {
+    alignItems: 'center',
+    paddingVertical: 24,
+    gap: 8,
+  },
+  harmonyStatusCircle: {
+    width: 116,
+    height: 116,
+    borderRadius: 58,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  harmonyBurstBar: {
+    position: 'absolute',
+    width: 3,
+    height: 10,
+    borderRadius: 1.5,
+    backgroundColor: colors.primaryLight,
+    opacity: 0.35,
+  },
+  harmonyStatusTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  harmonyStatusSubtitle: {
+    fontSize: 12.5,
+    color: colors.textTertiary,
+    textAlign: 'center',
+    lineHeight: 18,
+    paddingHorizontal: 20,
+    marginBottom: 12,
+  },
+  harmonyRecordPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 13,
+    paddingHorizontal: 26,
+    borderRadius: 26,
+  },
+  harmonyRecordPillText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
   },
   stemsSourceBanner: {
     flexDirection: 'row',
@@ -1873,18 +2113,117 @@ const getStyles = (colors: ThemeColors) => StyleSheet.create({
   lyricsInput: {
     height: 130,
   },
-  lyricsGenBox: {
-    backgroundColor: colors.surface,
+  lyricsTopicInput: {
+    minHeight: 56,
+    textAlignVertical: 'top',
+    paddingTop: 14,
+  },
+  lyricsGenerateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     borderRadius: 12,
     padding: 14,
-    marginBottom: 20,
   },
-  lyricsGenRow: {
+  formTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginBottom: 4,
+  },
+  formSubtitle: {
+    fontSize: 12,
+    color: colors.textTertiary,
+    marginBottom: 10,
+  },
+  charCountWrap: {
+    position: 'relative',
+  },
+  charCount: {
+    position: 'absolute',
+    right: 12,
+    bottom: 24,
+    fontSize: 10,
+    color: colors.textTertiary,
+  },
+  topicInputRow: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 8,
   },
-  lyricsGenHalf: {
-    flex: 1,
+  midiPromptInput: {
+    minHeight: 70,
+    textAlignVertical: 'top',
+    paddingTop: 14,
+  },
+  optionGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 18,
+  },
+  optionChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexBasis: '31%',
+    flexGrow: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  optionChipWide: {
+    flexBasis: '47%',
+  },
+  optionChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  inspirationBox: {
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    padding: 16,
+  },
+  inspirationHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 3,
+  },
+  inspirationTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  inspirationSubtitle: {
+    fontSize: 11.5,
+    color: colors.textTertiary,
+    marginBottom: 12,
+  },
+  inspirationGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  inspirationChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexBasis: '47%',
+    flexGrow: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    backgroundColor: colors.surfaceAlt,
+  },
+  inspirationChipText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    flexShrink: 1,
   },
   songInfoRow: {
     flexDirection: 'row',
